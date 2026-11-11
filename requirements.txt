@@ -1,0 +1,8 @@
+﻿apache-airflow
+pyspark
+requests
+minio
+psycopg2-binary
+streamlit
+pandas
+pytest

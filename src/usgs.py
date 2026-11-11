@@ -1,0 +1,1 @@
+# USGS earthquake API client.
