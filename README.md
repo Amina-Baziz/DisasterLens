@@ -55,6 +55,23 @@ No account or API key is needed, these are local settings. Your `.env` file stay
 
 Airflow stores its own tables in the same PostgreSQL database as the warehouse. The warehouse tables use separate schemas.
 
+## Versions
+
+| Component | Version |
+| --- | --- |
+| Apache Airflow | 2.10.5 |
+| Python (in Airflow image) | 3.11.11 |
+| PySpark | 3.5.3 |
+| Java | OpenJDK 17.0.21 |
+| PostgreSQL | 16.16 |
+| PostgreSQL JDBC driver | 42.7.4 |
+| MinIO | pgsty/minio (community image) |
+
+## Spark check
+
+Spark runs inside the Airflow containers in local mode (one node), which is enough for our data volume.
+This was tested by reading a small JSON file with PySpark and writing it to PostgreSQL over JDBC.
+
 ## Stopping and resetting
 
 - Stop the stack and keep the data: `docker compose down`
