@@ -1,0 +1,71 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "generated": 1763028000000,
+        "title": "USGS sample for tests",
+        "status": 200,
+        "count": 3
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "id": "us7000abcd",
+            "properties": {
+                "mag": 4.6,
+                "place": "120 km S of Tokyo, Japan",
+                "time": 1763000000000,
+                "updated": 1763003600000,
+                "type": "earthquake",
+                "title": "M 4.6 - 120 km S of Tokyo, Japan"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    139.69,
+                    34.6,
+                    35.2
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "nc75012345",
+            "properties": {
+                "mag": null,
+                "place": "5 km N of Somewhere, CA",
+                "time": 1763001000000,
+                "updated": 1763001500000,
+                "type": "earthquake",
+                "title": "M ? - 5 km N of Somewhere, CA"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -122.1,
+                    37.4,
+                    8.0
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "uu60123456",
+            "properties": {
+                "mag": 1.9,
+                "place": "10 km E of Quarry Town, UT",
+                "time": 1763002000000,
+                "updated": 1763002500000,
+                "type": "quarry blast",
+                "title": "M 1.9 Quarry Blast"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -111.9,
+                    40.5,
+                    0.0
+                ]
+            }
+        }
+    ]
+}
