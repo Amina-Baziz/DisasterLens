@@ -1,0 +1,68 @@
+{
+  "title": "EONET Events",
+  "description": "Small sample used by the tests",
+  "link": "https://eonet.gsfc.nasa.gov/api/v3/events",
+  "events": [
+    {
+      "id": "EONET_1001",
+      "title": "Storm Example",
+      "description": null,
+      "link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_1001",
+      "closed": null,
+      "categories": [{"id": "severeStorms", "title": "Severe Storms"}],
+      "sources": [{"id": "NOAA", "url": "https://example.org/storm"}],
+      "geometry": [
+        {
+          "magnitudeValue": 50,
+          "magnitudeUnit": "kts",
+          "date": "2026-11-10T00:00:00Z",
+          "type": "Point",
+          "coordinates": [-60.5, 15.2]
+        },
+        {
+          "magnitudeValue": 65,
+          "magnitudeUnit": "kts",
+          "date": "2026-11-11T12:00:00Z",
+          "type": "Point",
+          "coordinates": [-61.0, 16.0]
+        }
+      ]
+    },
+    {
+      "id": "EONET_1002",
+      "title": "Wildfire With Area Only",
+      "description": null,
+      "link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_1002",
+      "closed": null,
+      "categories": [{"id": "wildfires", "title": "Wildfires"}],
+      "sources": [{"id": "InciWeb", "url": "https://example.org/fire"}],
+      "geometry": [
+        {
+          "magnitudeValue": null,
+          "magnitudeUnit": null,
+          "date": "2026-11-09T00:00:00Z",
+          "type": "Polygon",
+          "coordinates": [[[10.0, 10.0], [11.0, 10.0], [11.0, 11.0], [10.0, 11.0], [10.0, 10.0]]]
+        }
+      ]
+    },
+    {
+      "id": "EONET_1003",
+      "title": "Volcano Already Closed",
+      "description": null,
+      "link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_1003",
+      "closed": "2026-11-08T00:00:00Z",
+      "categories": [{"id": "volcanoes", "title": "Volcanoes"}],
+      "sources": [{"id": "SIVolcano", "url": "https://example.org/volcano"}],
+      "geometry": [
+        {
+          "magnitudeValue": null,
+          "magnitudeUnit": null,
+          "date": "2026-11-05T00:00:00Z",
+          "type": "Point",
+          "coordinates": [-155.28, 19.42]
+        }
+      ]
+    }
+  ]
+}
