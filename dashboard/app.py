@@ -248,8 +248,8 @@ c2.metric("Events with a location", f"{located_events:,}")
 last_seen = coverage.loc[0, "last_seen"]
 c3.metric("Data last refreshed (UTC)", "no data" if pd.isna(last_seen) else f"{last_seen:%Y-%m-%d %H:%M}")
 
-tab_overview, tab_quakes, tab_other, tab_events, tab_quality = st.tabs(
-    ["Overview", "Earthquakes", "Other hazards", "Events", "Data quality"]
+tab_overview, tab_quakes, tab_other, tab_events, tab_quality, tab_health = st.tabs(
+    ["Overview", "Earthquakes", "Other hazards", "Events", "Data quality", "Pipeline health"]
 )
 
 
@@ -440,7 +440,7 @@ with tab_events:
 
 
 # =====================================================================
-# Tab 5: data quality (rules, source coverage, pipeline runs)
+# Tab 5: data quality (rules checked live on the warehouse)
 # =====================================================================
 
 def quality_sql():
@@ -468,24 +468,54 @@ with tab_quality:
         st.info("The data quality rules could not be loaded.")
         st.caption(f"Details: {error}")
 
-    st.subheader("Coverage per source")
-    source_table = run_query("SELECT * FROM mart.v_source_coverage ORDER BY source_name")
-    st.dataframe(source_table, hide_index=True)
 
+# =====================================================================
+# Tab 6: pipeline health (recent runs, latest quality results, coverage)
+# =====================================================================
+
+with tab_health:
     st.subheader("Recent pipeline runs")
     runs = run_query(
         """
         SELECT run_id, status, started_at_utc, duration_seconds,
-               rows_fetched, rows_inserted, rows_updated, rows_rejected
+               rows_fetched, rows_inserted, rows_updated, rows_rejected, error_message
         FROM ops.pipeline_runs
         ORDER BY started_at_utc DESC NULLS LAST
-        LIMIT 10
+        LIMIT 24
         """
     )
     if runs.empty:
         st.info("No pipeline runs have been logged yet.")
     else:
+        failed_runs = int((runs["status"] == "failed").sum())
+        successful = runs[runs["status"] == "success"]
+        h1, h2, h3 = st.columns(3)
+        h1.metric("Runs shown", len(runs))
+        h2.metric("Failed runs", failed_runs)
+        h3.metric(
+            "Last successful run (UTC)",
+            "none" if successful.empty else f"{successful.iloc[0]['started_at_utc']:%Y-%m-%d %H:%M}",
+        )
         st.dataframe(runs, hide_index=True)
+
+    st.subheader("Latest data quality results")
+    dq_latest = run_query(
+        """
+        SELECT rule_name, severity, passed, detail, checked_at_utc
+        FROM ops.dq_results
+        WHERE run_id = (SELECT run_id FROM ops.dq_results ORDER BY checked_at_utc DESC LIMIT 1)
+        ORDER BY passed, severity, rule_name
+        """
+    )
+    if dq_latest.empty:
+        st.info("No quality checks have been logged yet.")
+    else:
+        st.caption(f"Checked at {dq_latest.loc[0, 'checked_at_utc']:%Y-%m-%d %H:%M} UTC, by the last pipeline run that reached the quality step.")
+        st.dataframe(dq_latest[["rule_name", "severity", "passed", "detail"]], hide_index=True)
+
+    st.subheader("Coverage per source")
+    source_table = run_query("SELECT * FROM mart.v_source_coverage ORDER BY source_name")
+    st.dataframe(source_table, hide_index=True)
 
 
 # =====================================================================
