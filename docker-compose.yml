@@ -15,6 +15,7 @@ x-airflow-common: &airflow-common
   volumes:
     - ./dags:/opt/airflow/dags
     - ./src:/opt/airflow/src
+    - ./sql:/opt/airflow/sql
   depends_on:
     postgres:
       condition: service_healthy

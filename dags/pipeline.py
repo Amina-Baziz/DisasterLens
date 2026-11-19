@@ -6,17 +6,25 @@ Every hour this DAG:
      and saves both answers, unchanged, in the data lake (MinIO)
   2. checks that both files really arrived
   3. copies the files of this run to a work folder, where Spark reads them
+  4. runs the Spark job (src/transform.py), which cleans both sources into staging
+  5. merges staging into the warehouse and refreshes the daily summary
+  6. writes the run log, then runs the data quality rules
 
-The tasks only pass small notes to each other (a file path and a record count),
+The tasks only pass small notes to each other (a file path, a record count),
 never the data itself.
 """
 
+import json
 import os
+import subprocess
 import sys
-from datetime import datetime, timedelta
+from contextlib import closing
+from datetime import datetime, timedelta, timezone
 
 from airflow import DAG
+from airflow.exceptions import AirflowFailException
 from airflow.operators.python import PythonOperator
+from airflow.utils.trigger_rule import TriggerRule
 from minio.error import S3Error
 
 # The project folder (it holds src/) sits next to dags/.
@@ -25,13 +33,24 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from src import eonet, storage, usgs  # noqa: E402
+from src import eonet, load, storage, usgs  # noqa: E402
 
 # Where the files of one run are copied for Spark (inside the Airflow container).
 WORKDIR_ROOT = os.getenv("PIPELINE_WORKDIR", "/tmp/disasterlens")
 
 # How many days of EONET events the hourly run asks for.
 EONET_DAYS = 1
+
+# The PostgreSQL driver Spark needs to write to the database (installed in the Airflow image).
+JDBC_JAR = os.getenv("POSTGRES_JDBC_JAR", "/opt/postgresql.jar")
+
+DAG_ID = "disasterlens_pipeline"
+
+# Tasks whose result decides if the run counts as a success (the log and the quality check are not).
+PIPELINE_TASKS = [
+    "extract_usgs_to_lake", "extract_eonet_to_lake", "validate_raw", "stage_raw_to_workdir",
+    "spark_transform", "merge_to_warehouse", "refresh_marts",
+]
 
 
 # =====================================================================
@@ -111,6 +130,105 @@ def stage_raw_to_workdir(run_id):
     return {"workdir": folder, "files": len(paths)}
 
 
+def parse_spark_summary(output):
+    """Find the 'SPARK_SUMMARY {...}' line the Spark job prints at the end and return it as a dict."""
+    for line in output.splitlines():
+        if line.startswith("SPARK_SUMMARY "):
+            return json.loads(line[len("SPARK_SUMMARY "):])
+    raise RuntimeError("The Spark job finished but printed no SPARK_SUMMARY line")
+
+
+def run_outcome(task_states):
+    """
+    Decide how the run is logged, from the final state of each pipeline task.
+    task_states is {task_id: state}. Returns (status, error_message).
+    """
+    broken = {task: state for task, state in task_states.items() if state in ("failed", "upstream_failed")}
+    if not broken:
+        return "success", None
+    first = next(task for task in PIPELINE_TASKS if task in broken)
+    return "failed", f"{first} {broken[first]}"
+
+
+def to_naive_utc(moment):
+    """Airflow times carry a timezone. The warehouse stores plain UTC times."""
+    return moment.astimezone(timezone.utc).replace(tzinfo=None) if moment else None
+
+
+def transform_with_spark(run_id, ti):
+    """Run the Spark job on this run's files. It writes the clean events into staging.stg_event."""
+    stage = ti.xcom_pull(task_ids="stage_raw_to_workdir")
+    env = {
+        **os.environ,
+        "PYTHONPATH": PROJECT_ROOT,
+        "PYSPARK_SUBMIT_ARGS": f"--jars {JDBC_JAR} --driver-class-path {JDBC_JAR} pyspark-shell",
+    }
+    result = subprocess.run(
+        [sys.executable, "-m", "src.transform",
+         "--input-dir", stage["workdir"],
+         "--run-id", storage.safe_run_id(run_id),
+         "--output", "jdbc"],
+        cwd=PROJECT_ROOT, env=env, capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("Spark job failed:\n" + result.stderr[-3000:])
+    stats = parse_spark_summary(result.stdout)
+    print("Spark summary:", json.dumps(stats))
+    return stats
+
+
+def merge_to_warehouse():
+    """Move the staged events into the warehouse in one transaction (all or nothing)."""
+    with closing(load.connect()) as conn:
+        with conn:  # commits at the end, rolls back if anything fails
+            counts = load.merge_staging_to_fact(conn)
+    print("Merge counts:", json.dumps(counts))
+    return counts
+
+
+def refresh_marts():
+    """Refresh the daily summary the dashboard reads."""
+    with closing(load.connect()) as conn:
+        load.refresh_marts(conn)
+
+
+def record_run(run_id, dag_run, ti):
+    """Write this run into ops.pipeline_runs. Runs even when an earlier task failed."""
+    states = {t.task_id: t.state for t in dag_run.get_task_instances() if t.task_id in PIPELINE_TASKS}
+    status, error_message = run_outcome(states)
+
+    checked = ti.xcom_pull(task_ids="validate_raw") or {}
+    spark = ti.xcom_pull(task_ids="spark_transform") or {}
+    merged = ti.xcom_pull(task_ids="merge_to_warehouse") or {}
+    fetched = (checked.get("usgs_records") or 0) + (checked.get("eonet_records") or 0) if checked else None
+
+    now = datetime.now(timezone.utc)
+    with closing(load.connect()) as conn:
+        with conn:
+            load.record_run(
+                conn, run_id, DAG_ID, status,
+                to_naive_utc(dag_run.start_date or now), to_naive_utc(now),
+                rows_fetched=fetched,
+                rows_inserted=merged.get("rows_inserted"),
+                rows_updated=merged.get("rows_updated"),
+                rows_rejected=spark.get("rows_rejected"),
+                error_message=error_message,
+            )
+    print(f"Run logged as {status}")
+
+
+def run_dq_checks(run_id):
+    """Run the data quality rules and save the results. Fails the task if a rule of type error fails."""
+    with closing(load.connect()) as conn:
+        with conn:
+            summary = load.run_dq_checks(conn, run_id)
+    print("Data quality:", json.dumps(summary))
+    if summary["failed_errors"]:
+        raise AirflowFailException("Data quality errors: " + ", ".join(summary["failed_errors"]))
+    return summary
+
+
+
 # =====================================================================
 # The DAG
 # =====================================================================
@@ -122,8 +240,8 @@ default_args = {
 }
 
 with DAG(
-    dag_id="disasterlens_pipeline",
-    description="Hourly: USGS and EONET to the data lake",
+    dag_id=DAG_ID,
+    description="Hourly: USGS and EONET to the data lake and the warehouse",
     start_date=datetime(2026, 11, 1),
     schedule="@hourly",
     catchup=False,          # do not run for the hours that were missed
@@ -145,5 +263,19 @@ with DAG(
         task_id="stage_raw_to_workdir", python_callable=stage_raw_to_workdir,
     )
 
-    # Both downloads run side by side, then the check, then the copy.
-    [extract_usgs, extract_eonet_task] >> validate >> stage
+    spark = PythonOperator(
+        task_id="spark_transform", python_callable=transform_with_spark,
+        execution_timeout=timedelta(minutes=15),
+    )
+    merge = PythonOperator(task_id="merge_to_warehouse", python_callable=merge_to_warehouse)
+    refresh = PythonOperator(task_id="refresh_marts", python_callable=refresh_marts)
+    log_run = PythonOperator(
+        task_id="record_run", python_callable=record_run,
+        trigger_rule=TriggerRule.ALL_DONE,   # runs even when an earlier task failed
+    )
+    quality = PythonOperator(task_id="run_dq_checks", python_callable=run_dq_checks)
+
+    # Both downloads run side by side, then the check, the copy, Spark, the merge and the refresh.
+    # The run is logged after that (always), and the quality rules run once it is logged.
+    [extract_usgs, extract_eonet_task] >> validate >> stage >> spark >> merge >> refresh >> log_run
+    [refresh, log_run] >> quality
