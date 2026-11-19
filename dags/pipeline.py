@@ -206,7 +206,7 @@ def record_run(run_id, dag_run, ti):
     with closing(load.connect()) as conn:
         with conn:
             load.record_run(
-                conn, run_id, DAG_ID, status,
+                conn, run_id, dag_run.dag_id, status,
                 to_naive_utc(dag_run.start_date or now), to_naive_utc(now),
                 rows_fetched=fetched,
                 rows_inserted=merged.get("rows_inserted"),
