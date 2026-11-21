@@ -2,6 +2,8 @@
 
 This file holds the findings we draw from the warehouse, with the numbers and where each one comes from. All numbers cover 2025-12-01 to 2026-11-19 (about one year) and come from `sql/findings.sql`. The letters in brackets are the sections of the first query in that file. The numbers count events that USGS or EONET reported. They do not measure damage or severity.
 
+The numbers were checked against the dashboard: with the date range set to 2025/12/01 to 2026/11/19 and no other filter, the dashboard shows 39,378 events, which is the sum of the six hazard types in finding 1. The screenshot is `docs/screenshots/p2-07_dashboard_crosscheck.png`.
+
 ## 1. Earthquakes dominate the data [A]
 
 | Hazard type | Events | Share |
