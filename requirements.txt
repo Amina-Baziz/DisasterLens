@@ -1,12 +1,9 @@
-# Python packages used by the project.
-# The Airflow image installs its own (see Dockerfile); the dashboard has dashboard/requirements.txt.
-apache-airflow
-pyspark
-requests
-minio
-psycopg2-binary
-pytest
-streamlit
-pandas
-reverse_geocoder
-pycountry
+# Python packages used by the project. The Airflow image pins its own set in the Dockerfile,
+# the dashboard set is in dashboard/requirements.txt.
+apache-airflow==2.10.5
+pyspark==3.5.3
+requests==2.32.3
+minio==7.2.15
+psycopg2-binary==2.9.10
+pytest==8.3.4
+-r dashboard/requirements.txt

@@ -9,7 +9,7 @@ It only reads the mart views and the ops tables in PostgreSQL. It never writes a
 All events are loaded once (about 40,000 rows) and every filter works on that table in
 memory, so the page reacts instantly when a filter changes.
 
-Run it on your own PC (the containers must be running):
+Runs in the dashboard container (http://localhost:8501). To run it on your own PC instead:
     streamlit run dashboard/app.py
 """
 
