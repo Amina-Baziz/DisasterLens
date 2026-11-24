@@ -67,6 +67,12 @@ converted into one common format by `src/transform.py`, loaded into
 Duplicates are removed by event key. When the same event appears more than once,
 the copy with the newest `source_updated_utc` is kept.
 
+## Computed in the dashboard (not stored)
+
+| Field | How it is made |
+| --- | --- |
+| Place (region or country) | Earthquakes: the place named in the USGS title, for example `Alaska` from `10 km S of Yakutat, Alaska`. NASA EONET: the country of the nearest town to the event's point; for events with only an area, a country named in the title; far out at sea or on the ice, the ocean or polar area. |
+
 ## Data contract notes
 
 - All times are stored in UTC.

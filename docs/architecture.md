@@ -28,7 +28,7 @@ The pipeline is a batch pipeline. Airflow starts it every hour, and a second DAG
 | Data lake | MinIO (S3 compatible) | The raw API responses, unchanged, with a small metadata file per response | Keeps the original data so any run can be repeated or checked |
 | Transform | PySpark 3.5 (local mode) | Cleaning, mapping, rejecting bad rows, removing duplicates | Handles both sources with one set of rules and counts every rejected row |
 | Warehouse | PostgreSQL 16 | Four schemas: `staging`, `dw`, `mart`, `ops` | One database that holds the tables the dashboard needs and the run log |
-| Dashboard | Streamlit, Altair (charts), pydeck (maps) | Five tabs over the `mart` and `ops` schemas | Shows the data, live findings and the health of the pipeline. Written in Python like the rest of the project, so no separate BI server is needed |
+| Dashboard | Streamlit, Altair (charts), pydeck (maps) | One tab per hazard type plus Pipeline health, over the `mart` and `ops` schemas | Shows the data, live findings and the health of the pipeline. Written in Python like the rest of the project, so no separate BI server is needed |
 
 ## Data lake layout
 
@@ -52,6 +52,27 @@ The fact table is keyed by `event_key` (the source name and the source's own eve
 
 The materialized view holds the events per day, source and hazard type. It is refreshed after every merge without blocking the dashboard. `v_events` joins every event with its labels; the dashboard loads it once (about 40,000 rows, cached for 5 minutes) and filters it in memory, so magnitude, depth and region filters react instantly.
 
+## Dashboard
+
+The dashboard (`dashboard/app.py`) reads `mart.v_events` once, keeps it in memory for 5 minutes and does every filter and chart in pandas, so the page reacts instantly. It only reads; it never writes to the warehouse.
+
+| Part | What it shows | Why |
+| --- | --- | --- |
+| Header | Last refresh time (green when the data is less than 3 hours old) and the chosen period | Shows at a glance that the pipeline is alive |
+| Hazard tab line | All events, one tab per hazard type, and Pipeline health | One click changes the whole page, so each tab tells one story |
+| Key numbers | Four numbers, compared with the period just before (▲/▼) | The most important facts first |
+| What the data says | Three findings written from the filtered data (biggest share, busiest day, seasonal peak or most active place) | Insights in words, not only charts |
+| Charts | Map, what happened, where it happened, when it happened (one square per day) | What, where and when, each answered once |
+| Event list | Every matching event, searchable, with a CSV download | Find one event during a demo |
+| Pipeline health | Pipeline flow, success rate, recent runs, quality rules checked live, data per source | Shows that the data can be trusted |
+
+Choices made while building it:
+
+- **The magnitude filter starts at 2.5 and only shows where earthquakes are.** The backfill only loads earthquakes of 2.5 or more, while the hourly feed also brings smaller ones. Mixing them would make the latest days look like a sudden spike. NASA events have no magnitude, so the filter is hidden on their tabs.
+- **Places are computed in the dashboard, not stored.** Earthquakes take the place named in the USGS title. NASA titles often name no place, so their events get the country of their coordinates from an offline list of world towns (`reverse_geocoder`, `pycountry`); area-only events use a country named in their title. No external service is called.
+- **No invented locations.** Events that NASA reports only as an area (most recent floods) have no point. They are counted and placed in a country by title, but not drawn on the map.
+- **Calm colors.** Each hazard type has one muted color, used on every chart and map, so a color always means the same thing.
+
 ## Design decisions
 
 - **Raw data first.** Every response is saved in the lake before anything else happens. If the transform or the merge has a bug, the run can be repeated from the lake without calling the APIs again.
@@ -67,3 +88,5 @@ The materialized view holds the events per day, source and hazard type. It is re
 - The two sources are not merged. The same real earthquake can appear in both.
 - The backfill loads earthquakes of magnitude 2.5 or higher, because the USGS archive returns at most 20,000 events per request.
 - The counts show how many events were reported, not how severe they were.
+- Events that NASA reports only as an area are not drawn on the maps.
+- Countries come from the nearest town to an event's point, so an event close to a border can be placed in the neighbouring country.
