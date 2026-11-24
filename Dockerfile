@@ -10,4 +10,4 @@ RUN curl -fsSL -o /opt/postgresql.jar https://jdbc.postgresql.org/download/postg
     && chmod 644 /opt/postgresql.jar
 
 USER airflow
-RUN pip install --no-cache-dir pyspark==3.5.3 minio psycopg2-binary requests pytest
+RUN pip install --no-cache-dir pyspark==3.5.3 minio==7.2.15 psycopg2-binary==2.9.10 requests==2.32.3 pytest==8.3.4

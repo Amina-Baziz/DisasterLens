@@ -1,5 +1,7 @@
-streamlit
-pandas
-psycopg2-binary
-reverse_geocoder
-pycountry
+streamlit==1.65.0
+pandas==2.2.3
+psycopg2-binary==2.9.10
+altair==5.5.0
+pydeck==0.9.1
+reverse_geocoder==1.5.1
+pycountry==24.6.1
