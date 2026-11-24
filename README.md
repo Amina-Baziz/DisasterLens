@@ -93,9 +93,15 @@ Airflow stores its own tables in the same PostgreSQL database as the warehouse. 
 
 ## Dashboard
 
-![Dashboard, All events tab](docs/screenshots/dashboard_all_events.png)
+![Dashboard overview: tabs and key numbers](docs/screenshots/dashboard_overview.png)
 
-![Dashboard, Earthquakes tab](docs/screenshots/dashboard_earthquakes.png)
+![Map of events](docs/screenshots/dashboard_map.png)
+
+![Charts](docs/screenshots/dashboard_charts.png)
+
+![More charts](docs/screenshots/dashboard_more_charts.png)
+
+![Event list](docs/screenshots/dashboard_event_list.png)
 
 A tab line under the header chooses what the page shows: All events, one hazard type (Earthquakes, Wildfires, Floods, Severe storms, Sea and lake ice, Volcanoes), or Pipeline health. For a hazard choice, the four key numbers (compared with the period before), the three findings computed live from the data, and the charts all follow it, with two views below:
 
