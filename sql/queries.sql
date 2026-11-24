@@ -47,6 +47,13 @@ LIMIT 20;
 SELECT *
 FROM mart.v_source_coverage;
 
+-- Q6. The 10 strongest earthquakes, from the view the dashboard reads.
+SELECT event_time_utc, magnitude, depth_km, title
+FROM mart.v_events
+WHERE hazard_type = 'earthquake' AND magnitude IS NOT NULL
+ORDER BY magnitude DESC
+LIMIT 10;
+
 
 -- =====================================================================
 -- Part 2: data quality rules

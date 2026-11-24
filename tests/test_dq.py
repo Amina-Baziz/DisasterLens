@@ -71,6 +71,19 @@ def add_event(conn, key, hazard_key=1, time_sql="now() AT TIME ZONE 'utc'", lat=
         )
 
 
+def test_dashboard_view_has_one_row_per_event(conn):
+    """mart.v_events (read by the dashboard) holds every fact row once, with its labels."""
+    add_event(conn, "test:view_check")
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM dw.fact_event")
+        facts = cur.fetchone()[0]
+        cur.execute("SELECT count(*), count(DISTINCT event_key), count(*) FILTER (WHERE display_name IS NULL) "
+                    "FROM mart.v_events")
+        rows, keys, unlabeled = cur.fetchone()
+    assert rows == facts == keys
+    assert unlabeled == 0
+
+
 def test_every_rule_is_reported(conn):
     assert set(run_rules(conn)) == EXPECTED_RULES
 

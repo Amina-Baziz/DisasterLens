@@ -1,8 +1,12 @@
-﻿apache-airflow
+# Python packages used by the project.
+# The Airflow image installs its own (see Dockerfile); the dashboard has dashboard/requirements.txt.
+apache-airflow
 pyspark
 requests
 minio
 psycopg2-binary
+pytest
 streamlit
 pandas
-pytest
+reverse_geocoder
+pycountry
