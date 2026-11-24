@@ -243,6 +243,27 @@ JOIN dw.dim_hazard_type h ON h.hazard_key = f.hazard_key
 ORDER BY f.event_time_utc DESC
 LIMIT 200;
 
+-- Every event with its labels joined. The dashboard loads this once and filters it
+-- (magnitude, depth, region), which the daily summary cannot do.
+CREATE OR REPLACE VIEW mart.v_events AS
+SELECT
+    f.event_key,
+    f.title,
+    f.event_time_utc,
+    f.latitude,
+    f.longitude,
+    f.magnitude,
+    f.depth_km,
+    f.event_status,
+    f.has_valid_point,
+    s.source_name,
+    h.hazard_type,
+    h.hazard_group,
+    h.display_name
+FROM dw.fact_event f
+JOIN dw.dim_source      s ON s.source_key = f.source_key
+JOIN dw.dim_hazard_type h ON h.hazard_key = f.hazard_key;
+
 -- Per source: how many events, how many have a location, and how fresh the data is.
 CREATE OR REPLACE VIEW mart.v_source_coverage AS
 SELECT
