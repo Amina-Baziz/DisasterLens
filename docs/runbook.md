@@ -8,7 +8,7 @@ This file shows how the pipeline behaves when things go wrong, with the evidence
 |---|---|
 | Did the last run work? | Airflow, DAG `disasterlens_pipeline`, Graph view (http://localhost:8080) |
 | Why did a run fail? | Click the red task in Airflow, then Log. The same error is saved in `ops.pipeline_runs.error_message` |
-| Is the data fresh and correct? | Dashboard, tabs Data quality and Pipeline health |
+| Is the data fresh and correct? | Dashboard: the refresh time in the header, and the Pipeline health tab (recent runs and the quality rules checked live) |
 | Are the raw files there? | MinIO console (http://localhost:9001), bucket `disasterlens-lake`, folder `raw/` |
 
 ## Failure tests

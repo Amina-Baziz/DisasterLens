@@ -62,7 +62,7 @@ The `disasterlens_backfill` DAG is started by hand and loads historical data (by
 5. Check that everything is up: `docker compose ps -a`. `airflow-init` should show `Exited (0)`, which is normal. The other services should be running.
 6. Open Airflow (http://localhost:8080), log in, and switch on the `disasterlens_pipeline` DAG with the toggle on the left. It then runs every hour.
 7. To load history, trigger `disasterlens_backfill` once with the play button (the default settings are fine). It takes a few minutes. The data lake bucket is created automatically.
-8. Install the dashboard packages and start it: `pip install -r dashboard/requirements.txt`, then `streamlit run dashboard/app.py`. It opens at http://localhost:8501.
+8. Install the dashboard packages and start it: `pip install -r dashboard/requirements.txt`, then `streamlit run dashboard/app.py`. It opens at http://localhost:8501. The first page load takes a few seconds longer, while the offline list of world towns used for country names is loaded.
 
 ## Environment variables
 
@@ -95,8 +95,12 @@ A tab line under the header chooses what the page shows: All events, one hazard 
 
 | View | What it shows |
 | --- | --- |
-| Charts | All events: map, what happened, when it happened, and a calendar of events per day (one square per day over the whole history, the chosen period in color). Earthquakes: map sized by magnitude, strongest earthquakes, most active regions, earthquakes per day. Other hazards: map, when they happened, most active countries (from the coordinates, with the offline `reverse_geocoder` lookup), events active right now |
+| Charts | All events: map, what happened (events per hazard type), where it happened (top 10 places) and when it happened (a calendar with one square per day over the whole history, the chosen period in color). Earthquakes: map sized by magnitude, strongest earthquakes, most active regions, earthquakes per day. Other hazards: map, when they happened, most active countries, events active right now |
 | Event list | Every matching event, searchable by place or name, with a CSV download |
+
+Hovering a dot on a map shows the event, its hazard type, its place and coordinates, its time and, for earthquakes, its magnitude.
+
+Places: earthquakes use the place named in the USGS title (for example Alaska or Japan). NASA EONET titles often name no place, so their events get the country of their coordinates, from the nearest town in an offline list of world towns (packages `reverse_geocoder` and `pycountry`). Events reported only as an area, which is how NASA currently sends most floods, use the country named in their title. Events far out at sea or on the ice show their ocean or polar area. Area-only events have no point, so they are counted but not drawn on the map; the pipeline never invents a location.
 
 Pipeline health is the same for every hazard, so it has its own tab: how the data gets here, success rate and recent runs, the quality rules checked live, and the data per source.
 
