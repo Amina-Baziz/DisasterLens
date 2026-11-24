@@ -76,6 +76,23 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    image: disasterlens-dashboard
+    env_file:
+      - .env
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./dashboard:/app/dashboard
+      - ./sql:/app/sql
+      - ./.streamlit:/app/.streamlit
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   minio_data:

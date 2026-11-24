@@ -37,12 +37,12 @@ The `disasterlens_backfill` DAG is started by hand and loads historical data (by
 | `dags/` | Airflow DAGs for the hourly pipeline and the historical backfill |
 | `src/` | API clients, MinIO storage helpers, PySpark transform and warehouse load |
 | `sql/` | Warehouse schema, analytics queries and data quality rules |
-| `dashboard/` | Streamlit dashboard and its package list |
+| `dashboard/` | Streamlit dashboard, its pinned package list and its Dockerfile |
 | `.streamlit/` | Dashboard theme (dark, colors) |
 | `tests/` | Automated tests (API clients, storage, transform, load, DAGs, data quality) |
 | `docs/` | Architecture description, field mapping, runbook and screenshots |
 | `Dockerfile` | Airflow image with Java, PySpark, pytest and the PostgreSQL JDBC driver |
-| `docker-compose.yml` | Local stack: Airflow, MinIO (community image `pgsty/minio`, console branded SILO) and PostgreSQL |
+| `docker-compose.yml` | Local stack: Airflow, MinIO (community image `pgsty/minio`, console branded SILO), PostgreSQL and the dashboard |
 | `.env.example` | Environment variable names for the stack |
 | `requirements.txt` | Python packages used by the project |
 | `.gitignore` | Files and folders kept out of version control |
@@ -51,7 +51,7 @@ The `disasterlens_backfill` DAG is started by hand and loads historical data (by
 
 - Git
 - Docker Desktop, running, with at least 6 GB of memory
-- Python 3.10 or newer on your own machine, only for the dashboard
+- Python 3.10 or newer on your own machine, only if you want to run the dashboard outside Docker
 
 ## Quick start
 
@@ -62,7 +62,9 @@ The `disasterlens_backfill` DAG is started by hand and loads historical data (by
 5. Check that everything is up: `docker compose ps -a`. `airflow-init` should show `Exited (0)`, which is normal. The other services should be running.
 6. Open Airflow (http://localhost:8080), log in, and switch on the `disasterlens_pipeline` DAG with the toggle on the left. It then runs every hour.
 7. To load history, trigger `disasterlens_backfill` once with the play button (the default settings are fine). It takes a few minutes. The data lake bucket is created automatically.
-8. Install the dashboard packages and start it: `pip install -r dashboard/requirements.txt`, then `streamlit run dashboard/app.py`. It opens at http://localhost:8501.
+8. Open the dashboard at http://localhost:8501. It runs in its own container and starts with the rest of the stack.
+
+To run the dashboard outside Docker instead (for example while changing it): `docker compose stop dashboard`, `pip install -r dashboard/requirements.txt`, then `streamlit run dashboard/app.py`.
 
 ## Environment variables
 
@@ -90,6 +92,10 @@ No account or API key is needed, these are local settings. Your `.env` file stay
 Airflow stores its own tables in the same PostgreSQL database as the warehouse. The warehouse tables use separate schemas (`staging`, `dw`, `mart`, `ops`).
 
 ## Dashboard
+
+![Dashboard, All events tab](docs/screenshots/dashboard_all_events.png)
+
+![Dashboard, Earthquakes tab](docs/screenshots/dashboard_earthquakes.png)
 
 A tab line under the header chooses what the page shows: All events, one hazard type (Earthquakes, Wildfires, Floods, Severe storms, Sea and lake ice, Volcanoes), or Pipeline health. For a hazard choice, the four key numbers (compared with the period before), the three findings computed live from the data, and the charts all follow it, with two views below:
 
@@ -129,6 +135,8 @@ The pipeline was tested for a repeated run, an API failure, an empty API answer 
 | Apache Airflow | 2.10.5 |
 | Python (in Airflow image) | 3.11.11 |
 | PySpark | 3.5.3 |
+| Python (in dashboard image) | 3.11 |
+| Streamlit | 1.65.0 |
 | Java | OpenJDK 17.0.21 |
 | PostgreSQL | 16.16 |
 | PostgreSQL JDBC driver | 42.7.4 |
@@ -140,11 +148,12 @@ Spark runs inside the Airflow containers in local mode (one node), which is enou
 
 | Problem | What to do |
 | --- | --- |
-| The dashboard says it could not read from the database | Check `docker compose ps`, start the stack with `docker compose up -d`, and check that `POSTGRES_HOST_PORT` in `.env` is the port you expect |
+| The dashboard says it could not read from the database | Check `docker compose ps` and start the stack with `docker compose up -d`. If you run the dashboard outside Docker, check that `POSTGRES_HOST_PORT` in `.env` is the port you expect |
+| You changed `dashboard/app.py` | Reload the page. The code is mounted into the container, so no rebuild is needed. After changing `dashboard/requirements.txt`, run `docker compose up -d --build dashboard` |
 | Airflow shows `ERR_EMPTY_RESPONSE` right after the start | Wait about a minute and reload, the web server is still starting |
 | A DAG does not run | Check that its toggle in Airflow is switched on |
 | The image build fails with a download error | Run `docker compose up -d` again |
-| Port 5432, 8080, 9000 or 9001 is already in use | Stop the other program, or change `POSTGRES_HOST_PORT` in `.env` |
+| Port 5432, 8080, 8501, 9000 or 9001 is already in use | Stop the other program, or change `POSTGRES_HOST_PORT` in `.env` |
 | You changed `.env` | Run `docker compose up -d --force-recreate airflow-scheduler airflow-webserver` |
 | A run failed | Open the red task in Airflow and read its log, then see `docs/runbook.md` |
 
