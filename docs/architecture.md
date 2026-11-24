@@ -28,7 +28,7 @@ The pipeline is a batch pipeline. Airflow starts it every hour, and a second DAG
 | Data lake | MinIO (S3 compatible) | The raw API responses, unchanged, with a small metadata file per response | Keeps the original data so any run can be repeated or checked |
 | Transform | PySpark 3.5 (local mode) | Cleaning, mapping, rejecting bad rows, removing duplicates | Handles both sources with one set of rules and counts every rejected row |
 | Warehouse | PostgreSQL 16 | Four schemas: `staging`, `dw`, `mart`, `ops` | One database that holds the tables the dashboard needs and the run log |
-| Dashboard | Streamlit | Six tabs over the `mart` and `ops` schemas | Shows the data and the health of the pipeline |
+| Dashboard | Streamlit, Altair (charts), pydeck (maps) | Five tabs over the `mart` and `ops` schemas | Shows the data, live findings and the health of the pipeline. Written in Python like the rest of the project, so no separate BI server is needed |
 
 ## Data lake layout
 
@@ -45,12 +45,12 @@ The folder names carry the source, the day and the run, so one run can be found,
 | --- | --- | --- |
 | `staging` | `stg_event` | Clean rows written by Spark, rebuilt on every run |
 | `dw` | `fact_event`, `dim_date`, `dim_source`, `dim_hazard_type` | Star schema. One fact row per source event, holding its latest known version |
-| `mart` | `mv_daily_hazard_summary` (materialized view), `v_event_map`, `v_latest_events`, `v_source_coverage` | What the dashboard reads |
+| `mart` | `mv_daily_hazard_summary` (materialized view), `v_events`, `v_event_map`, `v_latest_events`, `v_source_coverage` | What the dashboard reads |
 | `ops` | `pipeline_runs`, `dq_results` | One row per run, and the result of every data quality rule per run |
 
 The fact table is keyed by `event_key` (the source name and the source's own event id). The dimensions hold the labels once: two sources, 13 hazard types in 6 groups, and a calendar for 2020 to 2030. The field by field mapping from each API to these columns is in `docs/field_mapping.md`.
 
-The materialized view holds the events per day, source and hazard type. It is refreshed after every merge without blocking the dashboard, because the dashboard reads it on every page load.
+The materialized view holds the events per day, source and hazard type. It is refreshed after every merge without blocking the dashboard. `v_events` joins every event with its labels; the dashboard loads it once (about 40,000 rows, cached for 5 minutes) and filters it in memory, so magnitude, depth and region filters react instantly.
 
 ## Design decisions
 

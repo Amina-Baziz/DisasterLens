@@ -38,6 +38,7 @@ The `disasterlens_backfill` DAG is started by hand and loads historical data (by
 | `src/` | API clients, MinIO storage helpers, PySpark transform and warehouse load |
 | `sql/` | Warehouse schema, analytics queries and data quality rules |
 | `dashboard/` | Streamlit dashboard and its package list |
+| `.streamlit/` | Dashboard theme (dark, colors) |
 | `tests/` | Automated tests (API clients, storage, transform, load, DAGs, data quality) |
 | `docs/` | Architecture description, field mapping, runbook and screenshots |
 | `Dockerfile` | Airflow image with Java, PySpark, pytest and the PostgreSQL JDBC driver |
@@ -90,7 +91,22 @@ Airflow stores its own tables in the same PostgreSQL database as the warehouse. 
 
 ## Dashboard
 
-The dashboard has six tabs: Overview (map, events by hazard type, daily trend), Earthquakes, Other hazards, Events (latest events with search), Data quality (the quality rules checked live) and Pipeline health (recent runs, latest quality results, coverage per source). The sidebar filters the date range, source, hazard type and minimum earthquake magnitude.
+A tab line under the header chooses what the page shows: All events, one hazard type (Earthquakes, Wildfires, Floods, Severe storms, Sea and lake ice, Volcanoes), or Pipeline health. For a hazard choice, the four key numbers (compared with the period before), the three findings computed live from the data, and the charts all follow it, with two views below:
+
+| View | What it shows |
+| --- | --- |
+| Charts | All events: map, what happened, when it happened, and a calendar of events per day (one square per day over the whole history, the chosen period in color). Earthquakes: map sized by magnitude, strongest earthquakes, most active regions, earthquakes per day. Other hazards: map, when they happened, most active countries (from the coordinates, with the offline `reverse_geocoder` lookup), events active right now |
+| Event list | Every matching event, searchable by place or name, with a CSV download |
+
+Pipeline health is the same for every hazard, so it has its own tab: how the data gets here, success rate and recent runs, the quality rules checked live, and the data per source.
+
+The sidebar filters the period and the source, and on the All events and Earthquakes tabs the minimum earthquake magnitude (only earthquakes have a magnitude). The magnitude starts at 2.5, because the one-year backfill only contains earthquakes of 2.5 or more; below that, the latest days would look like a spike. The dark theme and the accent color are set in `.streamlit/config.toml`.
+
+If you set up the project before the `mart.v_events` view existed, add it once (it only creates what is missing):
+
+```
+docker compose exec -T postgres psql -U <POSTGRES_USER> -d <POSTGRES_DB> < sql/schema.sql
+```
 
 ## Tests
 

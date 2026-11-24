@@ -1,0 +1,10 @@
+# Look of the Streamlit dashboard (read when you start it from the project folder).
+[theme]
+base = "dark"
+primaryColor = "#A8410F"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#161B26"
+textColor = "#E6E9EF"
+
+[client]
+toolbarMode = "minimal"   # hides the Deploy button
